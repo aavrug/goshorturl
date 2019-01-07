@@ -28,7 +28,11 @@ func main() {
         fmt.Println(err)
     }
 
-    fmt.Print("Successfully ",record," insertions happened, the code is http://eg.c/",code,"\n")
+    if record == 2 {
+        fmt.Print("For this URL record already exist, the short URL is http://eg.c/",code,"\n")
+    } else {
+        fmt.Print("Successfully ",record," inserted, the short URL is http://eg.c/",code,"\n")
+    }
 }
 
 func SetupConnection() (*sql.DB, error) {
@@ -50,6 +54,11 @@ func StoreRecord(db *sql.DB, urlString string) (string, int64, error) {
     _, err := url.ParseRequestURI(urlString)
     if err != nil {
         return "", 0, errors.New("URL is not valid!")
+    }
+
+    shortcode, _ := GetRecordByUrl(db, urlString)
+    if shortcode != "" {
+        return shortcode, 2, nil
     }
 
     created_time := time.Now()
@@ -97,6 +106,22 @@ func GetRecord(db *sql.DB, code string) (string, error) {
 
     return url, nil
 }
+
+func GetRecordByUrl(db *sql.DB, urlString string) (string, error) {
+    if urlString == "" {
+        return "", errors.New("Short code can't be empty!")
+    }
+
+    var code string
+    err := db.QueryRow("SELECT code FROM records WHERE url = $1", urlString).Scan(&code)
+
+    if err != nil {
+        return "", err
+    }
+
+    return code, nil
+}
+
 
 func GetAllRecords(db *sql.DB) (map[string]string, error) {
     rows, err := db.Query("SELECT id, code FROM records")
